@@ -27,12 +27,12 @@
 
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN TD */
-
+typedef enum {pressed = 1, released = 0} State;
 /* USER CODE END TD */
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
- 
+
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -42,12 +42,13 @@
 
 /* Private variables ---------------------------------------------------------*/
 /* USER CODE BEGIN PV */
+extern int button1, button2, button3, buttonRec, buttonStop;
+
 
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
 /* USER CODE BEGIN PFP */
-
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -203,51 +204,85 @@ void SysTick_Handler(void)
 void EXTI9_5_IRQHandler(void)
 {
   /* USER CODE BEGIN EXTI9_5_IRQn 0 */
-
-if (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_6)) {buttOne = on;}
-else {buttOne = off;}
-
-if (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_9)) {buttThree = on;}
-else {buttThree = off;}
-
-if (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_7)) {buttRec = on;}
-else {buttRec = off;}
-
-if (HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_8)) {buttStop = on;}
-else {buttStop = off;}
-
-buttTwo = off;
-
+	static unsigned long previous_interrupt = 0;
+	unsigned long interrupt_time = HAL_GetTick();
   /* USER CODE END EXTI9_5_IRQn 0 */
   HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_6);
   HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_7);
   HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_8);
   HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_9);
   /* USER CODE BEGIN EXTI9_5_IRQn 1 */
+  if(interrupt_time - previous_interrupt > 10)
+  {
+	  //button 1
+			 if(HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_6))
+			 {
+				 button1 = pressed;
+			 }
+			 else if (!HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_6))
+			 {
+				 button1 = released;
+			 }
 
+		//buttonStop
+			 if (HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_7))
+			 {
+				 buttonStop = pressed;
+			 }
+			 else if (!HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_7))
+			 {
+				 buttonStop = released;
+			 }
+
+		//button2
+			 if (HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_8))
+			 {
+				 button2 = pressed;
+			 }
+			 else if (!HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_8))
+			 {
+				 button2 = released;
+			 }
+
+		//buttonRec
+			 if (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_9))
+			 {
+				 buttonRec = pressed;
+			 }
+			 else if (!HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_9))
+			 {
+				 buttonRec = released;
+			 }
+			 previous_interrupt = interrupt_time;
+  }
   /* USER CODE END EXTI9_5_IRQn 1 */
 }
-
 /**
   * @brief This function handles EXTI line[15:10] interrupts.
   */
 void EXTI15_10_IRQHandler(void)
 {
   /* USER CODE BEGIN EXTI15_10_IRQn 0 */
-
-if (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_10)) {buttTwo = on;}
-else {buttTwo = off;}
-
-buttOne = off;
-buttThree = off;
-//buttRec = off;
-buttStop = off;
-
+	static unsigned long previous_interrupt1 = 0;
+	unsigned long interrupt_time1 = HAL_GetTick();
   /* USER CODE END EXTI15_10_IRQn 0 */
   HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_10);
   HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_13);
-  /* USER CODE BEGIN EXTI15_10_IRQn 1 */
 
+  /* USER CODE BEGIN EXTI15_10_IRQn 1 */
+  if(interrupt_time1 - previous_interrupt1 > 10)
+  {
+	  //button3
+	  if (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_10))
+	  	  {
+		  button3 = pressed;
+	  	  }
+	  else if (!HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_10))
+	  	  {
+		  button3 = released;
+	  	  }
+	  previous_interrupt1 = interrupt_time1;
+  }
   /* USER CODE END EXTI15_10_IRQn 1 */
 }
 

@@ -28,14 +28,13 @@
 
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN PTD */
-//extern enum {out, in}; 			//extern enum {out = 0, in = 1};
-extern enum {off, on, flash};
-typedef extern enum {Idle, PlayOne, PlayTwo, PlayThree}State;
+enum {pressed = 1, released = 0};
+enum {flash, off, on};
+typedef enum {Idle, Play1, Play2, Play3}State;
 /* USER CODE END PTD */
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -44,26 +43,9 @@ typedef extern enum {Idle, PlayOne, PlayTwo, PlayThree}State;
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
-ADC_HandleTypeDef hadc1;
-
-DAC_HandleTypeDef hdac;
-
 UART_HandleTypeDef huart2;
-
-volatile extern uint8_t ticky = HAL_GetTick();
-
-volatile extern uint8_t ledOne = off;
-volatile extern uint8_t ledTwo = off;
-volatile extern uint8_t	ledThree = off;
-volatile extern uint8_t ledRec = off;
-
-volatile extern uint8_t buttOne = off;
-volatile extern uint8_t buttTwo	= off;
-volatile extern uint8_t buttThree = off;
-volatile extern uint8_t buttRec = off;
-volatile extern uint8_t buttStop = off;
-
-volatile extern uint8_t state = Idle;
+volatile int button1, button2, button3, buttonRec, buttonStop;
+int led1, led2, led3, ledRec;
 /* USER CODE BEGIN PV */
 
 /* USER CODE END PV */
@@ -72,15 +54,12 @@ volatile extern uint8_t state = Idle;
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_USART2_UART_Init(void);
-static void MX_ADC1_Init(void);
-static void MX_DAC_Init(void);
 /* USER CODE BEGIN PFP */
-
+	void LEDsoff();
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-
 /* USER CODE END 0 */
 
 /**
@@ -90,6 +69,8 @@ static void MX_DAC_Init(void);
 int main(void)
 {
   /* USER CODE BEGIN 1 */
+	int tickValCur, tickValSet = 0, tickValCheck=0;
+	State myState = Idle;
 
   /* USER CODE END 1 */
   
@@ -113,10 +94,9 @@ int main(void)
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   MX_USART2_UART_Init();
-  MX_ADC1_Init();
-  MX_DAC_Init();
   /* USER CODE BEGIN 2 */
-
+  uint8_t startupmsg[10] = {127, 128, '2', '1', '5', '9', '9', '0', '4', '1'};
+  HAL_UART_Transmit(&huart2, startupmsg, 10, 100);
   /* USER CODE END 2 */
  
  
@@ -125,14 +105,205 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-	  State = Idle;
-	  Button3 = released;
-	tick =
-    /* USER CODE END WHILE */
+	  if (buttonStop == pressed) //STOP button is pressed, all LEDs turn off
+	  {
+		  LEDsoff();
+		  buttonStop = released;
+		  button1 = released;
+		  button2 = released;
+		  button3 = released;
+	  }
 
+	  if (buttonRec == pressed)
+	  {
+
+		  if (button1 == pressed)
+		  {
+			  myState = Play1;
+			  led1 = flash;
+			  ledRec = on;
+			  button2 = released;
+			  button3 = released;
+			 // button1 = released;
+			  //buttonRec = released;
+		  }
+		  if (button2 == pressed)
+		  {
+			  myState = Play2;
+			  led2 = flash;
+			  ledRec = on;
+			  button1 = released;
+			  button3 = released;
+			  //button2 = released;
+			  //buttonRec = released;
+		  }
+		  if (button3 == pressed)
+		  {
+			  myState = Play3;
+			  led3 = flash;
+			  ledRec = on;
+			  button1 = released;
+			  button2 = released;
+			  //button3 = released;
+			  //buttonRec = released;
+		  }
+
+	  }
+	  else if (buttonRec != pressed)
+	  {
+		  if (button1 == pressed)
+		  {
+			  myState = Play1;
+			  button1 = released;
+			  led1 = flash;
+			  ledRec = off;
+		  }
+		  else if (button2 == pressed)
+		  {
+			  myState = Play2;
+			  button2 = released;
+			  led2 = flash;
+			  ledRec = off;
+		  }
+		  else if (button3 == pressed)
+		  {
+			  myState = Play3;
+			  //button3 = released;
+			  led3 = flash;
+			  ledRec = off;
+		  }
+
+//		  if (buttonRec == pressed || button1 == pressed || button2 == pressed || button3 == pressed)
+//		  {
+//			  button1 = released;
+//			  button2 = released;
+//			  button3 = released;
+//			  buttonRec = released;
+//		  }
+	  }
+    /* USER CODE END WHILE */
     /* USER CODE BEGIN 3 */
-  }
+	  //LED BLINKING HANDLER
+	  if (myState == Play1) //REC Led on, LED1 Flashes
+	  {
+		  if (led2 == flash || led3 == flash) //turn off other leds
+		  {
+		  led2 = off;//turn off LED2
+		  led3 = off;//turn off LED3
+		  }
+
+		  if (tickValSet == 0)
+		  {
+			  tickValCur = HAL_GetTick();
+			  tickValSet = 1;
+		  }
+		  if (tickValSet == 1)
+		  {
+			  tickValCheck = HAL_GetTick();
+			  if (tickValCheck>=tickValCur+250)
+			  {
+				  if (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_8) == GPIO_PIN_SET)
+				  {
+					  HAL_GPIO_WritePin(GPIOA,GPIO_PIN_8, GPIO_PIN_RESET);
+					  tickValSet = 0;
+				  }else
+				  {
+					  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, GPIO_PIN_SET);
+					  tickValSet = 0;
+				  }
+			  }
+		  }
+	  }
+
+	  else if (myState == Play2)  //REC Led on, LED2 Flashes
+	  {
+		  if (led1 == flash || led3 == flash)
+		  {
+		  led1 = off;//turn off LED1
+		  led3 = off;//turn off LED3
+		  }
+
+		  if (tickValSet == 0)
+		  {
+			  tickValCur = HAL_GetTick();
+			  tickValSet = 1;
+		  }
+		  if (tickValSet == 1)
+		  {
+			  tickValCheck = HAL_GetTick();
+			  if (tickValCheck>=tickValCur+250)
+			  {
+				  if (HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_10) == GPIO_PIN_SET)
+				  {
+					  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_10, GPIO_PIN_RESET);
+					  tickValSet = 0;
+				  }else
+				  {
+					  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_10, GPIO_PIN_SET);
+					  tickValSet = 0;
+				  }
+			  }
+		  }
+	  }
+
+	  else if (myState == Play3)  //REC Led on, LED3 Flashes
+	  {
+		  if (led1 == flash || led2 == flash)
+		  {
+		  led1 = off;//turn off LED1
+		  led2 = off;//turn off LED2
+		  }
+
+		  if (tickValSet == 0)
+		  {
+			  tickValCur = HAL_GetTick();
+			  tickValSet = 1;
+		  }
+		  if (tickValSet == 1)
+		  {
+			  tickValCheck = HAL_GetTick();
+			  if (tickValCheck>=tickValCur+250)
+			  {
+				  if (HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_4) == GPIO_PIN_SET)
+				  {
+					  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_4, GPIO_PIN_RESET);
+					  tickValSet = 0;
+				  }else
+				  {
+					  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_4, GPIO_PIN_SET);
+					  tickValSet = 0;
+				  }
+			  }
+		  }
+	  }
+	  //END BLINKING HANDLER THINGMAJIGGY
+
+	  if (ledRec == on && HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_5) == GPIO_PIN_RESET)
+	  {
+		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_5, GPIO_PIN_SET);
+
+	  }else if (ledRec == off && HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_5) == GPIO_PIN_SET)
+	  {
+		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_5, GPIO_PIN_RESET);
+	  }
+
+	  //Code that handles when a led should be off
+	  if (led1 == off && HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_8) == GPIO_PIN_SET) //turn off led1
+	  {
+		  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, GPIO_PIN_RESET);
+	  }
+	  if (led2 == off && HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_10) == GPIO_PIN_SET)//turn off led2
+	  {
+		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_10, GPIO_PIN_RESET);
+	  }
+	  if (led3 == off && HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_4) == GPIO_PIN_SET)//turn off led3
+	  {
+		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_4, GPIO_PIN_RESET);
+	  }
+
+
   /* USER CODE END 3 */
+}
 }
 
 /**
@@ -177,94 +348,6 @@ void SystemClock_Config(void)
   {
     Error_Handler();
   }
-}
-
-/**
-  * @brief ADC1 Initialization Function
-  * @param None
-  * @retval None
-  */
-static void MX_ADC1_Init(void)
-{
-
-  /* USER CODE BEGIN ADC1_Init 0 */
-
-  /* USER CODE END ADC1_Init 0 */
-
-  ADC_ChannelConfTypeDef sConfig = {0};
-
-  /* USER CODE BEGIN ADC1_Init 1 */
-
-  /* USER CODE END ADC1_Init 1 */
-  /** Configure the global features of the ADC (Clock, Resolution, Data Alignment and number of conversion) 
-  */
-  hadc1.Instance = ADC1;
-  hadc1.Init.ClockPrescaler = ADC_CLOCK_SYNC_PCLK_DIV4;
-  hadc1.Init.Resolution = ADC_RESOLUTION_12B;
-  hadc1.Init.ScanConvMode = DISABLE;
-  hadc1.Init.ContinuousConvMode = DISABLE;
-  hadc1.Init.DiscontinuousConvMode = DISABLE;
-  hadc1.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_NONE;
-  hadc1.Init.ExternalTrigConv = ADC_SOFTWARE_START;
-  hadc1.Init.DataAlign = ADC_DATAALIGN_RIGHT;
-  hadc1.Init.NbrOfConversion = 1;
-  hadc1.Init.DMAContinuousRequests = DISABLE;
-  hadc1.Init.EOCSelection = ADC_EOC_SINGLE_CONV;
-  if (HAL_ADC_Init(&hadc1) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  /** Configure for the selected ADC regular channel its corresponding rank in the sequencer and its sample time. 
-  */
-  sConfig.Channel = ADC_CHANNEL_14;
-  sConfig.Rank = 1;
-  sConfig.SamplingTime = ADC_SAMPLETIME_3CYCLES;
-  if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  /* USER CODE BEGIN ADC1_Init 2 */
-
-  /* USER CODE END ADC1_Init 2 */
-
-}
-
-/**
-  * @brief DAC Initialization Function
-  * @param None
-  * @retval None
-  */
-static void MX_DAC_Init(void)
-{
-
-  /* USER CODE BEGIN DAC_Init 0 */
-
-  /* USER CODE END DAC_Init 0 */
-
-  DAC_ChannelConfTypeDef sConfig = {0};
-
-  /* USER CODE BEGIN DAC_Init 1 */
-
-  /* USER CODE END DAC_Init 1 */
-  /** DAC Initialization 
-  */
-  hdac.Instance = DAC;
-  if (HAL_DAC_Init(&hdac) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  /** DAC channel OUT1 config 
-  */
-  sConfig.DAC_Trigger = DAC_TRIGGER_NONE;
-  sConfig.DAC_OutputBuffer = DAC_OUTPUTBUFFER_ENABLE;
-  if (HAL_DAC_ConfigChannel(&hdac, &sConfig, DAC_CHANNEL_1) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  /* USER CODE BEGIN DAC_Init 2 */
-
-  /* USER CODE END DAC_Init 2 */
-
 }
 
 /**
@@ -334,8 +417,8 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : PA6 PA7 PA9 PA10 */
-  GPIO_InitStruct.Pin = GPIO_PIN_6|GPIO_PIN_7|GPIO_PIN_9|GPIO_PIN_10;
+  /*Configure GPIO pins : PA6 PA9 PA10 */
+  GPIO_InitStruct.Pin = GPIO_PIN_6|GPIO_PIN_9|GPIO_PIN_10;
   GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
   GPIO_InitStruct.Pull = GPIO_PULLDOWN;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
@@ -346,6 +429,12 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : PC7 */
+  GPIO_InitStruct.Pin = GPIO_PIN_7;
+  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
+  GPIO_InitStruct.Pull = GPIO_PULLDOWN;
+  HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
   /*Configure GPIO pin : PB8 */
   GPIO_InitStruct.Pin = GPIO_PIN_8;
@@ -363,7 +452,13 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
-
+void LEDsoff()
+{
+	led1 = off;
+	led2 = off;
+	led3 = off;
+	ledRec = off;
+}
 /* USER CODE END 4 */
 
 /**
