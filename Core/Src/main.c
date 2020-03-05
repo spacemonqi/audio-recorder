@@ -20,6 +20,7 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include "variables.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -28,9 +29,7 @@
 
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN PTD */
-//extern enum {out, in}; 			//extern enum {out = 0, in = 1};
-extern enum {off, on, flash};
-typedef extern enum {Idle, PlayOne, PlayTwo, PlayThree}State;
+
 /* USER CODE END PTD */
 
 /* Private define ------------------------------------------------------------*/
@@ -50,22 +49,10 @@ DAC_HandleTypeDef hdac;
 
 UART_HandleTypeDef huart2;
 
-volatile extern uint8_t ticky = HAL_GetTick();
-
-volatile extern uint8_t ledOne = off;
-volatile extern uint8_t ledTwo = off;
-volatile extern uint8_t	ledThree = off;
-volatile extern uint8_t ledRec = off;
-
-volatile extern uint8_t buttOne = off;
-volatile extern uint8_t buttTwo	= off;
-volatile extern uint8_t buttThree = off;
-volatile extern uint8_t buttRec = off;
-volatile extern uint8_t buttStop = off;
-
-volatile extern uint8_t state = Idle;
 /* USER CODE BEGIN PV */
-
+volatile State state;
+volatile int ledOne, ledTwo, ledThree, ledRec, buttOne,buttTwo, buttThree, buttRec, buttStop, Start, exti;
+volatile int ticky, Ri, Rf;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -90,6 +77,21 @@ static void MX_DAC_Init(void);
 int main(void)
 {
   /* USER CODE BEGIN 1 */
+
+	state = Idle;
+	Start = off;
+	exti = off;
+
+	ledOne = off;
+	ledTwo = off;
+	ledThree = off;
+	ledRec = off;
+
+	buttOne = off;
+	buttTwo	= off;
+	buttThree = off;
+	buttRec = off;
+	buttStop = off;
 
   /* USER CODE END 1 */
   
@@ -125,10 +127,78 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-	  State = Idle;
-	  Button3 = released;
-	tick =
-    /* USER CODE END WHILE */
+	  /////////////////////////////////////////////////////////////////////
+	  if (exti){
+
+		  if (!Start) Ri = HAL_GetTick();
+		  Start = on;
+		  Rf = HAL_GetTick();
+
+		  	if (Rf - Ri > 10){
+		  		if (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_6)) buttOne = on;
+		  		else buttOne = off;
+
+			  	if (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_10)) {buttTwo = on;}
+			  	else {buttTwo = off;}
+
+		  		if (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_9)) buttThree = on;
+		  		else buttThree = off;
+
+		  		if (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_7)) buttRec = on;
+		  		else {buttRec = off;}
+
+		  		if (HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_8)) buttStop = on;
+		  		else buttStop = off;
+
+		  		Start = off;
+		  		exti = off;
+		  	}
+
+		  /////////////////////////////////////////////
+		  if (!buttRec && buttOne) state = PlayOne;
+		  if (!buttRec && buttTwo) state = PlayTwo;
+		  if (!buttRec && buttThree) state = PlayThree;
+		  /////////////////////////////////////////////
+		  if (buttRec && buttOne) state = RecOne;
+		  if (buttRec && buttTwo) state = RecTwo;
+		  if (buttRec && buttThree) state = RecThree;
+		  /////////////////////////////////////////////
+	  }
+	  /////////////////////////////////////////////////////////////////////
+
+
+	  ticky = HAL_GetTick();
+	  ////////////////////////////////////////////////////////////////////
+	  if (state == PlayOne){
+		  if (ticky % 500 < 250) HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, on);
+		  else HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, off);
+	  }
+	  if (state == PlayTwo){
+		  if (ticky % 500 < 250) HAL_GPIO_WritePin(GPIOB, GPIO_PIN_10, on);
+		  else HAL_GPIO_WritePin(GPIOB, GPIO_PIN_10, off);
+	  }
+	  if (state == PlayThree){
+		  if (ticky % 500 < 250) HAL_GPIO_WritePin(GPIOB, GPIO_PIN_4, on);
+		  else HAL_GPIO_WritePin(GPIOB, GPIO_PIN_4, off);
+	  }
+	  ////////////////////////////////////////////////////////////////////
+	  if (state == RecOne){
+		  if (ticky % 500 < 250) HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, on);
+		  else HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, off);
+		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_5, on);
+	  }
+	  if (state == RecTwo){
+		  if (ticky % 500 < 250) HAL_GPIO_WritePin(GPIOB, GPIO_PIN_10, on);
+		  else HAL_GPIO_WritePin(GPIOA, GPIO_PIN_10, off);
+		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_5, on);
+	  }
+	  if (state == RecThree){
+		  if (ticky % 500 < 250) HAL_GPIO_WritePin(GPIOB, GPIO_PIN_4, on);
+		  else HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, off);
+		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_5, on);
+	  }
+	  ////////////////////////////////////////////////////////////////////
+	/* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
   }

@@ -21,6 +21,7 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "stm32f4xx_it.h"
+#include "variables.h"
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 /* USER CODE END Includes */
@@ -42,7 +43,7 @@
 
 /* Private variables ---------------------------------------------------------*/
 /* USER CODE BEGIN PV */
-
+extern volatile int exti;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -58,7 +59,7 @@
 /* External variables --------------------------------------------------------*/
 
 /* USER CODE BEGIN EV */
-
+extern int led;
 /* USER CODE END EV */
 
 /******************************************************************************/
@@ -203,21 +204,7 @@ void SysTick_Handler(void)
 void EXTI9_5_IRQHandler(void)
 {
   /* USER CODE BEGIN EXTI9_5_IRQn 0 */
-
-if (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_6)) {buttOne = on;}
-else {buttOne = off;}
-
-if (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_9)) {buttThree = on;}
-else {buttThree = off;}
-
-if (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_7)) {buttRec = on;}
-else {buttRec = off;}
-
-if (HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_8)) {buttStop = on;}
-else {buttStop = off;}
-
-buttTwo = off;
-
+	exti = on;
   /* USER CODE END EXTI9_5_IRQn 0 */
   HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_6);
   HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_7);
@@ -234,15 +221,7 @@ buttTwo = off;
 void EXTI15_10_IRQHandler(void)
 {
   /* USER CODE BEGIN EXTI15_10_IRQn 0 */
-
-if (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_10)) {buttTwo = on;}
-else {buttTwo = off;}
-
-buttOne = off;
-buttThree = off;
-//buttRec = off;
-buttStop = off;
-
+	exti = on;
   /* USER CODE END EXTI15_10_IRQn 0 */
   HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_10);
   HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_13);
