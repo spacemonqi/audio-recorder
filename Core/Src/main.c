@@ -24,6 +24,7 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "variables.h"
+#include "math.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -53,9 +54,9 @@ UART_HandleTypeDef huart2;
 volatile State state;
 volatile int ledOne, ledTwo, ledThree, ledRec, buttOne,buttTwo, buttThree, buttRec, buttStop, Start, exti;
 volatile int ticky, Ri, Rf;
-volatile uint16_t sine440[44100];
-volatile uint16_t sine523[44100];
-volatile uint16_t sineSum[44100];
+volatile uint16_t sine440[1024];
+volatile uint16_t sine523[1024];
+volatile uint16_t sineSum[1024];
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -98,11 +99,11 @@ int main(void)
 	buttStop = off;
 
 	int i;
-	for (i=0;i<44100;i++)
+	for (i=0;i<1024;i++)
 	{
-		sine440[i] = sin(440*i/44100));
-		sine523[i] = sin(i/523);
-		sineSum[i] = ;
+		sine440[i] = sin(440*i/1024);
+		sine523[i] = sin(523*i/1024);
+		sineSum[i] = 2*sin((523-440)*i/(2*1024))*cos((523-440)*i/(2*1024));
 	}
 
   /* USER CODE END 1 */
@@ -173,7 +174,7 @@ int main(void)
 
 	  if (!(HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_6) || HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_10) || HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_9) || HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_8))){
 
-		  if (!buttRec && buttOne) state = PlayOne;
+		  if (!buttRec && buttOne) state = PlayOne; //maybe rather do this in the if(exti){} to reduce redundancy
 		  if (!buttRec && buttTwo) state = PlayTwo;
 		  if (!buttRec && buttThree) state = PlayThree;
 
