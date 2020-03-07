@@ -134,7 +134,7 @@ int main(void)
 		  Start = on;
 		  Rf = HAL_GetTick();
 
-		  	if (Rf - Ri > 10){
+		  	if (Rf - Ri > 20){
 		  		if (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_6)) buttOne = on;
 		  		else buttOne = off;
 
@@ -153,51 +153,67 @@ int main(void)
 		  		Start = off;
 		  		exti = off;
 		  	}
-
-		  /////////////////////////////////////////////
-		  if (!buttRec && buttOne) state = PlayOne;
-		  if (!buttRec && buttTwo) state = PlayTwo;
-		  if (!buttRec && buttThree) state = PlayThree;
-		  /////////////////////////////////////////////
-		  if (buttRec && buttOne) state = RecOne;
-		  if (buttRec && buttTwo) state = RecTwo;
-		  if (buttRec && buttThree) state = RecThree;
-		  /////////////////////////////////////////////
 	  }
 	  /////////////////////////////////////////////////////////////////////
 
+	  if (!(HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_6) || HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_10) || HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_9) || HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_8))){
+
+		  if (!buttRec && buttOne) state = PlayOne;
+		  if (!buttRec && buttTwo) state = PlayTwo;
+		  if (!buttRec && buttThree) state = PlayThree;
+
+		  if (buttRec && buttOne) state = RecOne;
+		  if (buttRec && buttTwo) state = RecTwo;
+		  if (buttRec && buttThree) state = RecThree;
+
+		  if (buttStop) state = Idle;
+	  }
 
 	  ticky = HAL_GetTick();
-	  ////////////////////////////////////////////////////////////////////
-	  if (state == PlayOne){
-		  if (ticky % 500 < 250) HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, on);
-		  else HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, off);
+	  ///////////////////////////////////////////////////////////////////////////////////
+	  if (state == PlayOne || state == PlayTwo || state == PlayThree || state == Idle){
+	  	  if (state == PlayOne){
+	  		  if (ticky % 500 < 250) HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, on);
+	  		  else HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, off);
+	  	  }
+	  	  else HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, off);
+
+	  	  if (state == PlayTwo){
+	  		  if (ticky % 500 < 250) HAL_GPIO_WritePin(GPIOB, GPIO_PIN_10, on);
+	  		  else HAL_GPIO_WritePin(GPIOB, GPIO_PIN_10, off);
+	  	  }
+	  	  else HAL_GPIO_WritePin(GPIOB, GPIO_PIN_10, off);
+
+	  	  if (state == PlayThree){
+	  		  if (ticky % 500 < 250) HAL_GPIO_WritePin(GPIOB, GPIO_PIN_4, on);
+	  		  else HAL_GPIO_WritePin(GPIOB, GPIO_PIN_4, off);
+	  	  }
+	  	  else HAL_GPIO_WritePin(GPIOB, GPIO_PIN_4, off);
 	  }
-	  if (state == PlayTwo){
-		  if (ticky % 500 < 250) HAL_GPIO_WritePin(GPIOB, GPIO_PIN_10, on);
-		  else HAL_GPIO_WritePin(GPIOB, GPIO_PIN_10, off);
-	  }
-	  if (state == PlayThree){
-		  if (ticky % 500 < 250) HAL_GPIO_WritePin(GPIOB, GPIO_PIN_4, on);
-		  else HAL_GPIO_WritePin(GPIOB, GPIO_PIN_4, off);
-	  }
-	  ////////////////////////////////////////////////////////////////////
-	  if (state == RecOne){
-		  if (ticky % 500 < 250) HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, on);
-		  else HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, off);
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_5, on);
-	  }
-	  if (state == RecTwo){
-		  if (ticky % 500 < 250) HAL_GPIO_WritePin(GPIOB, GPIO_PIN_10, on);
-		  else HAL_GPIO_WritePin(GPIOA, GPIO_PIN_10, off);
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_5, on);
-	  }
-	  if (state == RecThree){
-		  if (ticky % 500 < 250) HAL_GPIO_WritePin(GPIOB, GPIO_PIN_4, on);
-		  else HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, off);
-		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_5, on);
-	  }
-	  ////////////////////////////////////////////////////////////////////
+	  ///////////////////////////////////////////////////////////////////////////////////
+  	  if (state == RecOne || state == RecTwo || state == RecThree){
+  		  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_5, on);
+
+  	  	  if (state == RecOne){
+  	  		  if (ticky % 500 < 250) HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, on);
+  	  		  else HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, off);
+  	  	  }
+  	  	  else HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, off);
+
+  	  	  if (state == RecTwo){
+  	  		  if (ticky % 500 < 250) HAL_GPIO_WritePin(GPIOB, GPIO_PIN_10, on);
+  	  		  else HAL_GPIO_WritePin(GPIOB, GPIO_PIN_10, off);
+  	  	  }
+  	  	  else HAL_GPIO_WritePin(GPIOB, GPIO_PIN_10, off);
+
+  	  	  if (state == RecThree){
+  	  		  if (ticky % 500 < 250) HAL_GPIO_WritePin(GPIOB, GPIO_PIN_4, on);
+  	  		  else HAL_GPIO_WritePin(GPIOB, GPIO_PIN_4, off);
+  	  	  }
+  	  	  else HAL_GPIO_WritePin(GPIOB, GPIO_PIN_4, off);
+  	  }
+  	  else HAL_GPIO_WritePin(GPIOB, GPIO_PIN_5, off);
+	  ///////////////////////////////////////////////////////////////////////////////////
 	/* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
