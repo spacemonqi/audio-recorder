@@ -101,9 +101,9 @@ int main(void)
 	int i;
 	for (i=0;i<1024;i++)
 	{
-		sine440[i] = sin(440*i/1024);
-		sine523[i] = sin(523*i/1024);
-		sineSum[i] = 2*sin((523-440)*i/(2*1024))*cos((523-440)*i/(2*1024));
+		sine440[i] = sin(2*pi*440*i/1024);
+		sine523[i] = sin(2*pi*523*i/1024);
+		sineSum[i] = 2*sin(2*pi*(523-440)*i/(2*1024))*cos(2*pi*(523-440)*i/(2*1024));
 	}
 
   /* USER CODE END 1 */
