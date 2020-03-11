@@ -25,6 +25,7 @@
 /* USER CODE BEGIN Includes */
 #include "variables.h"
 #include "math.h"
+#include "sinewave.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -52,11 +53,9 @@ UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN PV */
 volatile State state;
-volatile int ledOne, ledTwo, ledThree, ledRec, buttOne,buttTwo, buttThree, buttRec, buttStop, Start, exti;
+volatile int buttOne,buttTwo, buttThree, buttRec, buttStop, exti_start, exti, state_start;
 volatile int ticky, Ri, Rf;
-volatile uint16_t sine440[1024];
-volatile uint16_t sine523[1024];
-volatile uint16_t sineSum[1024];
+uint16_t dac_buffer[1024];
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -83,14 +82,11 @@ int main(void)
 {
   /* USER CODE BEGIN 1 */
 
-	state = Idle;
-	Start = off;
-	exti = off;
 
-	ledOne = off;
-	ledTwo = off;
-	ledThree = off;
-	ledRec = off;
+	state = Idle;
+	state_start = off;
+	exti = off;
+	exti_start = off;
 
 	buttOne = off;
 	buttTwo	= off;
@@ -98,13 +94,15 @@ int main(void)
 	buttRec = off;
 	buttStop = off;
 
-	int i;
-	for (i=0;i<1024;i++)
-	{
-		sine440[i] = sin(2*pi*440*i/1024);
-		sine523[i] = sin(2*pi*523*i/1024);
-		sineSum[i] = 2*sin(2*pi*(523-440)*i/(2*1024))*cos(2*pi*(523-440)*i/(2*1024));
-	}
+	wave_init();
+
+//	int i;
+//	for (i=0;i<1024;i++)
+//	{
+//		sine440[i] = sin(2*pi*440*i/1024);
+//		sine523[i] = sin(2*pi*523*i/1024);
+//		sineSum[i] = 2*sin(2*pi*(523-440)*i/(2*1024))*cos(2*pi*(523-440)*i/(2*1024));
+//	}
 
   /* USER CODE END 1 */
 
@@ -132,11 +130,10 @@ int main(void)
   MX_TIM6_Init();
   /* USER CODE BEGIN 2 */
   uint8_t msg[10] = {127, 128, '2','1','7','8','5','1','5','5'};
-   HAL_UART_Transmit(&huart2, msg, sizeof(msg), 1000);
+   HAL_UART_Transmit(&huart2, msg, sizeof(msg), 100);
 
    HAL_TIM_Base_Start(&htim6);
-   HAL_DAC_Start(&hdac, DAC_CHANNEL_1);
-   HAL_DAC_Start_DMA(&hdac, DAC_CHANNEL_1, (uint32_t*)sine440, 32, DAC_ALIGN_12B_R);
+   //HAL_DAC_exti_start(&hdac, DAC_CHANNEL_1);
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -146,43 +143,78 @@ int main(void)
 	  /////////////////////////////////////////////////////////////////////
 	  if (exti){
 
-		  if (!Start) Ri = HAL_GetTick();
-		  Start = on;
+		  if (!exti_start) Ri = HAL_GetTick();
+		  exti_start = on;
 		  Rf = HAL_GetTick();
 
-		  	if (Rf - Ri > 20){
+		  	if (Rf - Ri > 10){
 		  		if (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_6)) buttOne = on;
 		  		else buttOne = off;
 
-			  	if (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_10)) {buttTwo = on;}
-			  	else {buttTwo = off;}
+			  	if (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_10)) buttTwo = on;
+			  	else buttTwo = off;
 
 		  		if (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_9)) buttThree = on;
 		  		else buttThree = off;
 
 		  		if (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_7)) buttRec = on;
-		  		else {buttRec = off;}
+		  		else buttRec = off;
 
 		  		if (HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_8)) buttStop = on;
 		  		else buttStop = off;
 
-		  		Start = off;
 		  		exti = off;
+		  		state_start = off;
+		  		exti_start = off;
 		  	}
 	  }
 	  /////////////////////////////////////////////////////////////////////
 
 	  if (!(HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_6) || HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_10) || HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_9) || HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_8))){
-
-		  if (!buttRec && buttOne) state = PlayOne; //maybe rather do this in the if(exti){} to reduce redundancy
-		  if (!buttRec && buttTwo) state = PlayTwo;
-		  if (!buttRec && buttThree) state = PlayThree;
-
-		  if (buttRec && buttOne) state = RecOne;
-		  if (buttRec && buttTwo) state = RecTwo;
-		  if (buttRec && buttThree) state = RecThree;
-
-		  if (buttStop) state = Idle;
+		  if (!state_start){
+			  if (buttOne || buttTwo || buttThree) state_start = on;
+			  if (!buttRec && buttOne){
+				  state = PlayOne;
+				  uint8_t msg[10] = {127, 128,'P','l','a','y','_','_','_','1'};
+				  HAL_UART_Transmit(&huart2, msg, sizeof(msg), 100);
+		  		  wave_fillbuffer(dac_buffer, 1, 1024);
+		  		  HAL_DAC_Start_DMA(&hdac, DAC_CHANNEL_1, (uint32_t*)dac_buffer, 1024, DAC_ALIGN_12B_R);
+			  }
+			  else if (!buttRec && buttTwo){
+				  state = PlayTwo;
+				  uint8_t msg[10] = {127, 128,'P','l','a','y','_','_','_','2'};
+				  HAL_UART_Transmit(&huart2, msg, sizeof(msg), 100);
+		  		  wave_fillbuffer(dac_buffer, 2, 1024);
+		  		  HAL_DAC_Start_DMA(&hdac, DAC_CHANNEL_1, (uint32_t*)dac_buffer, 1024, DAC_ALIGN_12B_R);
+			  }
+			  else if (!buttRec && buttThree){
+				  state = PlayThree;
+				  uint8_t msg[10] = {127, 128,'P','l','a','y','_','_','_','3'};
+				  HAL_UART_Transmit(&huart2, msg, sizeof(msg), 100);
+		  		  wave_fillbuffer(dac_buffer, 3, 1024);
+		  		  HAL_DAC_Start_DMA(&hdac, DAC_CHANNEL_1, (uint32_t*)dac_buffer, 1024, DAC_ALIGN_12B_R);
+			  }
+			  else if (buttRec && buttOne){
+				  state = RecOne;
+				  uint8_t msg[10] = {127, 128,'R','e','c','o','r','d','_','1'};
+				  HAL_UART_Transmit(&huart2, msg, sizeof(msg), 100);
+			  }
+			  else if (buttRec && buttTwo){
+				  state = RecTwo;
+				  uint8_t msg[10] = {127, 128,'R','e','c','o','r','d','_','2'};
+				  HAL_UART_Transmit(&huart2, msg, sizeof(msg), 100);
+			  }
+			  else if (buttRec && buttThree){
+				  state = RecThree;
+				  uint8_t msg[10] = {127, 128,'R','e','c','o','r','d','_','3'};
+				  HAL_UART_Transmit(&huart2, msg, sizeof(msg), 100);
+			  }
+			  else if (buttStop){
+				  state = Idle;
+				  uint8_t msg[10] = {127, 128,'S','t','o','p','_','_','_','_'};
+				  HAL_UART_Transmit(&huart2, msg, sizeof(msg), 1000);
+			  }
+		  }
 	  }
 
 	  ticky = HAL_GetTick();

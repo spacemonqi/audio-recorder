@@ -1,0 +1,2 @@
+sinewave.c:15:6:wave_init	16	static
+sinewave.c:25:6:wave_fillbuffer	24	static
