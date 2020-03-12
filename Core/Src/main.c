@@ -53,7 +53,7 @@ UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN PV */
 volatile State state;
-volatile int buttOne,buttTwo, buttThree, buttRec, buttStop, exti_start, exti, state_start;
+volatile int buttOne,buttTwo, buttThree, buttRec, buttStop, exti_start, exti, state_start, wave;
 volatile int ticky, Ri, Rf;
 uint16_t dac_buffer[1024];
 /* USER CODE END PV */
@@ -87,7 +87,6 @@ int main(void)
 	state_start = off;
 	exti = off;
 	exti_start = off;
-
 	buttOne = off;
 	buttTwo	= off;
 	buttThree = off;
@@ -95,14 +94,6 @@ int main(void)
 	buttStop = off;
 
 	wave_init();
-
-//	int i;
-//	for (i=0;i<1024;i++)
-//	{
-//		sine440[i] = sin(2*pi*440*i/1024);
-//		sine523[i] = sin(2*pi*523*i/1024);
-//		sineSum[i] = 2*sin(2*pi*(523-440)*i/(2*1024))*cos(2*pi*(523-440)*i/(2*1024));
-//	}
 
   /* USER CODE END 1 */
 
@@ -130,10 +121,8 @@ int main(void)
   MX_TIM6_Init();
   /* USER CODE BEGIN 2 */
   uint8_t msg[10] = {127, 128, '2','1','7','8','5','1','5','5'};
-   HAL_UART_Transmit(&huart2, msg, sizeof(msg), 100);
-
-   HAL_TIM_Base_Start(&htim6);
-   //HAL_DAC_exti_start(&hdac, DAC_CHANNEL_1);
+  HAL_UART_Transmit(&huart2, msg, sizeof(msg), 100);
+  HAL_TIM_Base_Start(&htim6);
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -170,11 +159,11 @@ int main(void)
 	  }
 	  /////////////////////////////////////////////////////////////////////
 
-	  if (!(HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_6) || HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_10) || HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_9) || HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_8))){
-		  if (!state_start){
-			  if (buttOne || buttTwo || buttThree) state_start = on;
+	  if (!state_start && !(HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_6) || HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_10) || HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_9) || HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_8))){
+			  if (buttOne || buttTwo || buttThree || buttStop) state_start = on;
 			  if (!buttRec && buttOne){
 				  state = PlayOne;
+				  wave = 1;
 				  uint8_t msg[10] = {127, 128,'P','l','a','y','_','_','_','1'};
 				  HAL_UART_Transmit(&huart2, msg, sizeof(msg), 100);
 		  		  wave_fillbuffer(dac_buffer, 1, 1024);
@@ -182,6 +171,7 @@ int main(void)
 			  }
 			  else if (!buttRec && buttTwo){
 				  state = PlayTwo;
+				  wave = 2;
 				  uint8_t msg[10] = {127, 128,'P','l','a','y','_','_','_','2'};
 				  HAL_UART_Transmit(&huart2, msg, sizeof(msg), 100);
 		  		  wave_fillbuffer(dac_buffer, 2, 1024);
@@ -189,6 +179,7 @@ int main(void)
 			  }
 			  else if (!buttRec && buttThree){
 				  state = PlayThree;
+				  wave = 3;
 				  uint8_t msg[10] = {127, 128,'P','l','a','y','_','_','_','3'};
 				  HAL_UART_Transmit(&huart2, msg, sizeof(msg), 100);
 		  		  wave_fillbuffer(dac_buffer, 3, 1024);
@@ -198,23 +189,26 @@ int main(void)
 				  state = RecOne;
 				  uint8_t msg[10] = {127, 128,'R','e','c','o','r','d','_','1'};
 				  HAL_UART_Transmit(&huart2, msg, sizeof(msg), 100);
+		  		  HAL_DAC_Stop_DMA(&hdac, DAC_CHANNEL_1);
 			  }
 			  else if (buttRec && buttTwo){
 				  state = RecTwo;
 				  uint8_t msg[10] = {127, 128,'R','e','c','o','r','d','_','2'};
 				  HAL_UART_Transmit(&huart2, msg, sizeof(msg), 100);
+		  		  HAL_DAC_Stop_DMA(&hdac, DAC_CHANNEL_1);
 			  }
 			  else if (buttRec && buttThree){
 				  state = RecThree;
 				  uint8_t msg[10] = {127, 128,'R','e','c','o','r','d','_','3'};
 				  HAL_UART_Transmit(&huart2, msg, sizeof(msg), 100);
+		  		  HAL_DAC_Stop_DMA(&hdac, DAC_CHANNEL_1);
 			  }
 			  else if (buttStop){
 				  state = Idle;
 				  uint8_t msg[10] = {127, 128,'S','t','o','p','_','_','_','_'};
 				  HAL_UART_Transmit(&huart2, msg, sizeof(msg), 1000);
+		  		  HAL_DAC_Stop_DMA(&hdac, DAC_CHANNEL_1);
 			  }
-		  }
 	  }
 
 	  ticky = HAL_GetTick();
@@ -369,15 +363,15 @@ static void MX_TIM6_Init(void)
 
   /* USER CODE END TIM6_Init 1 */
   htim6.Instance = TIM6;
-  htim6.Init.Prescaler = 1905;
+  htim6.Init.Prescaler = 0;
   htim6.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim6.Init.Period = 1;
+  htim6.Init.Period = 1905;
   htim6.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
   if (HAL_TIM_Base_Init(&htim6) != HAL_OK)
   {
     Error_Handler();
   }
-  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_UPDATE;
   sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
   if (HAL_TIMEx_MasterConfigSynchronization(&htim6, &sMasterConfig) != HAL_OK)
   {
@@ -501,6 +495,22 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
+void HAL_DAC_ConvCpltCallbackCh1(DAC_HandleTypeDef* hdac)
+{
+	  HAL_DAC_Start_DMA(hdac, DAC_CHANNEL_1, (uint32_t*)dac_buffer, 1024, DAC_ALIGN_12B_R);
+	  wave_fillbuffer(dac_buffer+512, wave, 512);
+}
+
+/**
+  * @brief  Conversion half DMA transfer callback in non blocking mode for Channel1
+  * @param  hdac pointer to a DAC_HandleTypeDef structure that contains
+  *         the configuration information for the specified DAC.
+  * @retval None
+  */
+void HAL_DAC_ConvHalfCpltCallbackCh1(DAC_HandleTypeDef* hdac)
+{
+	  wave_fillbuffer(dac_buffer, wave, 512);
+}
 
 /* USER CODE END 4 */
 

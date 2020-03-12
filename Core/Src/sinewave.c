@@ -15,7 +15,7 @@ uint16_t offset_523hz;
 void wave_init()
 {
 	for (int i = 0; i < 256; i++)
-		sintab[i] = (int) (1500.0f * sinf(i * 0.02454369261f));
+		sintab[i] = (int) (800.0f * sinf(i * 0.02454369261f));
 
 	offset_440hz = 0;
 	offset_523hz = 0;
