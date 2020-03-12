@@ -1933,7 +1933,7 @@ void wave_init()
  8000fc6:	2300      	movs	r3, #0
  8000fc8:	607b      	str	r3, [r7, #4]
  8000fca:	e01e      	b.n	800100a <wave_init+0x4a>
-		sintab[i] = (int) (800.0f * sinf(i * 0.02454369261f));
+		sintab[i] = (int) (900.0f * sinf(i * 0.02454369261f));
  8000fcc:	687b      	ldr	r3, [r7, #4]
  8000fce:	ee07 3a90 	vmov	s15, r3
  8000fd2:	eef8 7ae7 	vcvt.f32.s32	s15, s15
@@ -1972,7 +1972,7 @@ void wave_init()
  8001020:	46bd      	mov	sp, r7
  8001022:	bd80      	pop	{r7, pc}
  8001024:	3cc90fdb 	.word	0x3cc90fdb
- 8001028:	44480000 	.word	0x44480000
+ 8001028:	44610000 	.word	0x44610000
  800102c:	20000954 	.word	0x20000954
  8001030:	20000952 	.word	0x20000952
  8001034:	20000950 	.word	0x20000950
