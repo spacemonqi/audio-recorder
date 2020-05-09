@@ -40,8 +40,8 @@ edesign_2020_21785155.bin \
 all: edesign_2020_21785155.elf secondary-outputs
 
 # Tool invocations
-edesign_2020_21785155.elf: $(OBJS) $(USER_OBJS) C:\Users\labuser\Documents\edesign_2020_21785155\STM32F446RETX_FLASH.ld
-	arm-none-eabi-gcc -o "edesign_2020_21785155.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m4 -T"C:\Users\labuser\Documents\edesign_2020_21785155\STM32F446RETX_FLASH.ld" --specs=nosys.specs -Wl,-Map="edesign_2020_21785155.map" -Wl,--gc-sections -static --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
+edesign_2020_21785155.elf: $(OBJS) $(USER_OBJS) C:\Users\dvone\Documents\edesign_2020_21785155\STM32F446RETX_FLASH.ld
+	arm-none-eabi-gcc -o "edesign_2020_21785155.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m4 -T"C:\Users\dvone\Documents\edesign_2020_21785155\STM32F446RETX_FLASH.ld" --specs=nosys.specs -Wl,-Map="edesign_2020_21785155.map" -Wl,--gc-sections -static --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
 	@echo 'Finished building target: $@'
 	@echo ' '
 
