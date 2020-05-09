@@ -26,6 +26,7 @@
 #include "variables.h"
 #include "math.h"
 #include "sinewave.h"
+#include "recording.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -60,8 +61,6 @@ DMA_HandleTypeDef hdma_usart2_tx;
 volatile State state;
 volatile int buttOne,buttTwo, buttThree, buttRec, buttStop, exti_start, exti, state_start, wave;
 volatile int ticky, Ri, Rf;
-uint8_t rec_buffer[1024];
-uint16_t dac_buffer[1024];
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -78,17 +77,67 @@ static void MX_TIM2_Init(void);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
+
 /* USER CODE BEGIN 0 */
+uint8_t rec_buffer[1024];
+uint16_t dac_buffer[1024];
+
+int32_t temp_sample;
+int8_t out_buffer[1024];
+
+int32_t avg = 128;
+int32_t accumulator;
+int32_t numavg;
+float smooth_sample;
+
 void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc)
 {
 	huart2.gState = HAL_UART_STATE_READY;
-	HAL_UART_Transmit_DMA(&huart2, rec_buffer+512, 512);
+
+	for (int i=512;i<1024;i++)
+	{
+		accumulator += rec_buffer[i];
+		temp_sample = (int32_t)rec_buffer[i] - avg;
+		smooth_sample = 0.125f * temp_sample + 0.875f * smooth_sample;
+		temp_sample = (int32_t)smooth_sample;
+		if (temp_sample > 127) temp_sample = 127;
+		if (temp_sample < -128) temp_sample = -128;
+		out_buffer[i] = (int8_t)temp_sample;
+	}
+	numavg += 512;
+	if (numavg >= 20480)
+	{
+		avg = accumulator /20480;
+		accumulator = 0;
+		numavg = 0;
+	}
+
+	HAL_UART_Transmit_DMA(&huart2, (uint8_t*)out_buffer+512, 512);
 }
 
 void HAL_ADC_ConvHalfCpltCallback(ADC_HandleTypeDef* hadc)
 {
 	huart2.gState = HAL_UART_STATE_READY;
-	HAL_UART_Transmit_DMA(&huart2, rec_buffer, 512);
+
+	for (int i=0;i<512;i++)
+	{
+		accumulator += rec_buffer[i];
+		temp_sample = (int32_t)rec_buffer[i] - avg;
+		smooth_sample = 0.125f * temp_sample + 0.875f * smooth_sample;
+		temp_sample = (int32_t)smooth_sample;
+		if (temp_sample > 127) temp_sample = 127;
+		if (temp_sample < -128) temp_sample = -128;
+		out_buffer[i] = (int8_t)temp_sample;
+	}
+	numavg += 512;
+	if (numavg >= 20480)
+	{
+		avg = accumulator /20480;
+		accumulator = 0;
+		numavg = 0;
+	}
+
+	HAL_UART_Transmit_DMA(&huart2, (uint8_t*)out_buffer, 512);
 }
 
 void HAL_DAC_ConvCpltCallbackCh1(DAC_HandleTypeDef* hdac)
