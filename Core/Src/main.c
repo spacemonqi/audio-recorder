@@ -60,6 +60,7 @@ DMA_HandleTypeDef hdma_usart2_tx;
 volatile State state;
 volatile int buttOne,buttTwo, buttThree, buttRec, buttStop, exti_start, exti, state_start, wave;
 volatile int ticky, Ri, Rf;
+uint8_t rec_buffer[1024];
 uint16_t dac_buffer[1024];
 /* USER CODE END PV */
 
@@ -78,7 +79,28 @@ static void MX_TIM2_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-uint8_t rec_buffer[1024];
+void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc)
+{
+	huart2.gState = HAL_UART_STATE_READY;
+	HAL_UART_Transmit_DMA(&huart2, rec_buffer+512, 512);
+}
+
+void HAL_ADC_ConvHalfCpltCallback(ADC_HandleTypeDef* hadc)
+{
+	huart2.gState = HAL_UART_STATE_READY;
+	HAL_UART_Transmit_DMA(&huart2, rec_buffer, 512);
+}
+
+void HAL_DAC_ConvCpltCallbackCh1(DAC_HandleTypeDef* hdac)
+{
+	HAL_DAC_Start_DMA(hdac, DAC_CHANNEL_1, (uint32_t*)dac_buffer, 1024, DAC_ALIGN_12B_R);
+	wave_fillbuffer(dac_buffer+512, wave, 512);
+}
+
+void HAL_DAC_ConvHalfCpltCallbackCh1(DAC_HandleTypeDef* hdac)
+{
+	wave_fillbuffer(dac_buffer, wave, 512);
+}
 /* USER CODE END 0 */
 
 /**
@@ -135,7 +157,7 @@ int main(void)
   while (1)
   {
 	  /////////////////////////////////////////////////////////////////////
-	  if (exti){
+	    if (exti){
 
 		  if (!exti_start) Ri = HAL_GetTick();
 		  exti_start = on;
@@ -602,28 +624,6 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
-void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc)
-{
-	huart2.gState = HAL_UART_STATE_READY;
-	HAL_UART_Transmit_DMA(&huart2, rec_buffer+512, 512);
-}
-
-void HAL_ADC_ConvHalfCpltCallback(ADC_HandleTypeDef* hadc)
-{
-	huart2.gState = HAL_UART_STATE_READY;
-	HAL_UART_Transmit_DMA(&huart2, rec_buffer, 512);
-}
-
-void HAL_DAC_ConvCpltCallbackCh1(DAC_HandleTypeDef* hdac)
-{
-	HAL_DAC_Start_DMA(hdac, DAC_CHANNEL_1, (uint32_t*)dac_buffer, 1024, DAC_ALIGN_12B_R);
-	wave_fillbuffer(dac_buffer+512, wave, 512);
-}
-
-void HAL_DAC_ConvHalfCpltCallbackCh1(DAC_HandleTypeDef* hdac)
-{
-	wave_fillbuffer(dac_buffer, wave, 512);
-}
 /* USER CODE END 4 */
 
 /**
