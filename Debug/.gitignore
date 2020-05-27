@@ -4,3 +4,5 @@
 /objects.list
 /objects.mk
 /sources.mk
+/FATFS/
+/Middlewares/

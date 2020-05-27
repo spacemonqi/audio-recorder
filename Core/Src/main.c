@@ -20,6 +20,7 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include "fatfs.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -92,9 +93,16 @@ int32_t accumulator;
 int32_t numavg;
 float smooth_sample;
 
+FATFS fs;
+FRESULT fres;
+FIL sdfile;
+
+uint8_t savestart = 0;
+uint8_t savemid = 0;
+
 void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc)
 {
-	huart2.gState = HAL_UART_STATE_READY;
+	huart2.gState = HAL_UART_STATE_READY; //remove this, replace with write to SD Card
 
 	for (int i=512;i<1024;i++)
 	{
@@ -114,12 +122,13 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc)
 		numavg = 0;
 	}
 
-	HAL_UART_Transmit_DMA(&huart2, (uint8_t*)out_buffer+512, 512);
+	HAL_UART_Transmit_DMA(&huart2, (uint8_t*)out_buffer+512, 512); //remove this, replace with write to SD Card
+	savemid = 1;
 }
 
 void HAL_ADC_ConvHalfCpltCallback(ADC_HandleTypeDef* hadc)
 {
-	huart2.gState = HAL_UART_STATE_READY;
+	huart2.gState = HAL_UART_STATE_READY; //remove this, replace with write to SD Card
 
 	for (int i=0;i<512;i++)
 	{
@@ -139,7 +148,8 @@ void HAL_ADC_ConvHalfCpltCallback(ADC_HandleTypeDef* hadc)
 		numavg = 0;
 	}
 
-	HAL_UART_Transmit_DMA(&huart2, (uint8_t*)out_buffer, 512);
+	HAL_UART_Transmit_DMA(&huart2, (uint8_t*)out_buffer, 512); //remove this, replace with write to SD Card
+	savestart = 1;
 }
 
 void HAL_DAC_ConvCpltCallbackCh1(DAC_HandleTypeDef* hdac)
@@ -196,6 +206,7 @@ int main(void)
   MX_ADC2_Init();
   MX_TIM2_Init();
   MX_SPI2_Init();
+  MX_FATFS_Init();
   /* USER CODE BEGIN 2 */
   uint8_t msg[10] = {127, 128, '2','1','7','8','5','1','5','5'};
   HAL_UART_Transmit(&huart2, msg, sizeof(msg), 100);
@@ -203,7 +214,7 @@ int main(void)
   HAL_TIM_Base_Start(&htim2);
   HAL_ADC_Start_DMA(&hadc2, (uint32_t*)rec_buffer, 1024);
 
-  //SD Card Testing Start---------------------------------------------
+  //1. SD Card Testing Start---------------------------------------------
   //deselect SD card - chipselect high
   HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0, 1);
   HAL_Delay(1);
@@ -220,7 +231,7 @@ int main(void)
 
   //transmit reset/go to idel command (CMD0) bytes
   uint8_t cmd0bytes[] = {0x40, 0x00, 0x00, 0x00, 0x00, 0x95};
-  HAL_SPI_Transmit(&hspi2, cmdbytes0, 6, 100);
+  HAL_SPI_Transmit(&hspi2, cmd0bytes, 6, 100);
 
   //read R1 response
   uint8_t r1_resp;
@@ -233,15 +244,72 @@ int main(void)
 
   HAL_UART_Transmit(&huart2, &r1_resp, 1, 1000);
   HAL_UART_Transmit(&huart2, (uint8_t*)&cnt, 1, 1000);
-  //SD Card Testing End-------------------------------------------------
+  //1. SD Card Testing End-------------------------------------------------
 
+  //2. SD Card Temporary Code Start----------------------------------------
+  uint8_t res = SD_Init();
+  HAL_UART_Transmit(&huart2, &res, 1, 100);
+  if (res == 1) HAL_UART_Transmit(&huart2, "OK!", 4, 1000);
+
+  uint8_t rxbuffer[512];
+  uint8_t txbuffer[512] = "Hello World!";
+
+  SD_Read(rxbuffer, 0, 1);
+  HAL_UART_Transmit(&huart2, rxbuffer, 512, 1000);
+
+  SD_Write(txbuffer, 0, 1);
+  SD_Read(rxbuffer, 0, 1);
+  HAL_UART_Transmit(&huart2, rxbuffer, 512, 1000);
+  //2. SD Card Temporary Code End------------------------------------------
+
+  //3. SD Card Final Code Start (to be moved to the buttons)---------------
+  //mount file system (SD Card)
+  fres = f_mount(&fs, "", 1);
+
+  //create a file
+  fres = f_open(&sdfile, "record1.bin", FA_CREATE_ALWAYS | FA_WRITE);
+
+  //3. SD Card Final Code End----------------------------------------------
   /* USER CODE END 2 */
-
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
+  //SD Card variables------------------------------------------------------
+  UINT num;
+  int count = 430;
+  uint8_t recording = 1;
+  //SD Card variables------------------------------------------------------
+
   while (1)
   {
+
+
+	  //SD Card while loop code start (move to the right places)-----------
+	  if (recording)
+	  {
+		  if (savestart)
+		  {
+			  fres = f_write(&sdfile, out_buffer, 512, &num);
+			  savestart = 0;
+			  count--;
+		  }
+		  if (savemid)
+		  {
+			  fres = f_write(&sdfile, out_buffer+512, 512, &num);
+			  savemid = 0;
+			  count--;
+		  }
+		  if (count == 0)
+		  {
+			  recording = 0;
+			  f_close(&sdfile);
+		  }
+	  }
+	  //SD Card while loop code end----------------------------------------
+
+
+
+
 	  /////////////////////////////////////////////////////////////////////
 	    if (exti){
 
