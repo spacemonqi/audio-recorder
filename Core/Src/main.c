@@ -51,6 +51,8 @@ DMA_HandleTypeDef hdma_adc2;
 DAC_HandleTypeDef hdac;
 DMA_HandleTypeDef hdma_dac1;
 
+SPI_HandleTypeDef hspi2;
+
 TIM_HandleTypeDef htim2;
 TIM_HandleTypeDef htim6;
 
@@ -72,12 +74,12 @@ static void MX_DAC_Init(void);
 static void MX_TIM6_Init(void);
 static void MX_ADC2_Init(void);
 static void MX_TIM2_Init(void);
+static void MX_SPI2_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
-
 /* USER CODE BEGIN 0 */
 uint8_t rec_buffer[1024];
 uint16_t dac_buffer[1024];
@@ -193,13 +195,48 @@ int main(void)
   MX_TIM6_Init();
   MX_ADC2_Init();
   MX_TIM2_Init();
+  MX_SPI2_Init();
   /* USER CODE BEGIN 2 */
   uint8_t msg[10] = {127, 128, '2','1','7','8','5','1','5','5'};
   HAL_UART_Transmit(&huart2, msg, sizeof(msg), 100);
   HAL_TIM_Base_Start(&htim6);
   HAL_TIM_Base_Start(&htim2);
   HAL_ADC_Start_DMA(&hadc2, (uint32_t*)rec_buffer, 1024);
+
+  //SD Card Testing Start---------------------------------------------
+  //deselect SD card - chipselect high
+  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0, 1);
+  HAL_Delay(1);
+
+  uint8_t dummy = 0xff;
+  for (int i=0;i<10;i++)
+  {
+	  HAL_SPI_Transmit(&hspi2, &dummy, 1, 100);
+  }
+
+  //select SD card - chipselect low
+  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0, 0);
+  HAL_Delay(1);
+
+  //transmit reset/go to idel command (CMD0) bytes
+  uint8_t cmd0bytes[] = {0x40, 0x00, 0x00, 0x00, 0x00, 0x95};
+  HAL_SPI_Transmit(&hspi2, cmdbytes0, 6, 100);
+
+  //read R1 response
+  uint8_t r1_resp;
+  int cnt = 0;
+  for (cnt=0;cnt<800;cnt++)
+  {
+	  HAL_SPI_Receive(&hspi2, &r1_resp, 1, 100);
+	  if (r1_resp = 0x01) break;
+  }
+
+  HAL_UART_Transmit(&huart2, &r1_resp, 1, 1000);
+  HAL_UART_Transmit(&huart2, (uint8_t*)&cnt, 1, 1000);
+  //SD Card Testing End-------------------------------------------------
+
   /* USER CODE END 2 */
+
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
@@ -472,6 +509,44 @@ static void MX_DAC_Init(void)
 }
 
 /**
+  * @brief SPI2 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_SPI2_Init(void)
+{
+
+  /* USER CODE BEGIN SPI2_Init 0 */
+
+  /* USER CODE END SPI2_Init 0 */
+
+  /* USER CODE BEGIN SPI2_Init 1 */
+
+  /* USER CODE END SPI2_Init 1 */
+  /* SPI2 parameter configuration*/
+  hspi2.Instance = SPI2;
+  hspi2.Init.Mode = SPI_MODE_MASTER;
+  hspi2.Init.Direction = SPI_DIRECTION_2LINES;
+  hspi2.Init.DataSize = SPI_DATASIZE_8BIT;
+  hspi2.Init.CLKPolarity = SPI_POLARITY_LOW;
+  hspi2.Init.CLKPhase = SPI_PHASE_1EDGE;
+  hspi2.Init.NSS = SPI_NSS_SOFT;
+  hspi2.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_4;
+  hspi2.Init.FirstBit = SPI_FIRSTBIT_MSB;
+  hspi2.Init.TIMode = SPI_TIMODE_DISABLE;
+  hspi2.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
+  hspi2.Init.CRCPolynomial = 10;
+  if (HAL_SPI_Init(&hspi2) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN SPI2_Init 2 */
+
+  /* USER CODE END SPI2_Init 2 */
+
+}
+
+/**
   * @brief TIM2 Initialization Function
   * @param None
   * @retval None
@@ -629,7 +704,7 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_WritePin(GPIOA, LD2_Pin|GPIO_PIN_8, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_10|GPIO_PIN_4|GPIO_PIN_5, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0|GPIO_PIN_10|GPIO_PIN_4|GPIO_PIN_5, GPIO_PIN_RESET);
 
   /*Configure GPIO pin : B1_Pin */
   GPIO_InitStruct.Pin = B1_Pin;
@@ -650,11 +725,19 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_PULLDOWN;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : PB10 PB4 PB5 */
-  GPIO_InitStruct.Pin = GPIO_PIN_10|GPIO_PIN_4|GPIO_PIN_5;
+  /*Configure GPIO pins : PB0 PB10 PB4 PB5 */
+  GPIO_InitStruct.Pin = GPIO_PIN_0|GPIO_PIN_10|GPIO_PIN_4|GPIO_PIN_5;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : PB3 */
+  GPIO_InitStruct.Pin = GPIO_PIN_3;
+  GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
+  GPIO_InitStruct.Alternate = GPIO_AF6_SPI3;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
   /*Configure GPIO pin : PB8 */
